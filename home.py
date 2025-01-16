@@ -13,7 +13,8 @@ from keras.models import Model
 IMG_SIZE = (224, 224)
 IMG_ADDRESS = "https://svs.gsfc.nasa.gov/vis/a010000/a011000/a011034/frames/4096x4096_1x1_30p/JHV_movie_created_2012-07-07_03.32.03_0001.jpg"
 IMAGE_NAME = "user_image.png"
-CLASS_LABEL = ['Normal' 'SolarFlare']
+CLASS_LABEL = ['Normal', 'SolarFlare']
+CLASS_LABEL.sort()
 
 
 @st.cache_resource
@@ -79,7 +80,7 @@ if image:
     with st.spinner("Processing......."):
         image_features = featurization(IMAGE_NAME, ConvNeXtXLarge_featurized_model)
         model_predict = classification_model.predict(image_features)
-        result_label = ULTRASOUND_LABEL[model_predict]
+        result_label = CLASS_LABEL[model_predict[0]]
         st.success(f"Prediction: {result_label}")
         
 
