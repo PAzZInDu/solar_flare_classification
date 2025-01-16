@@ -4,31 +4,23 @@ import numpy as np
 from keras.applications.resnet import preprocess_input
 from PIL import Image
 import pickle
-
-import xgboost as xgb
-from xgb import XGBClassifier
+from xgboost import XGBClassifier
 from keras.layers import GlobalAveragePooling2D
 from keras.models import Model
-from keras.layers import GlobalAveragePooling2D
+
 
 # constants
 IMG_SIZE = (224, 224)
-IMG_ADDRESS = "https://content.presspage.com/uploads/2110/d237c19a-da4a-4b83-a7fe-057d80f50483/1920_breast-tissue-image.jpg?10000"
+IMG_ADDRESS = "https://svs.gsfc.nasa.gov/vis/a010000/a011000/a011034/frames/4096x4096_1x1_30p/JHV_movie_created_2012-07-07_03.32.03_0001.jpg"
 IMAGE_NAME = "user_image.png"
-ULTRASOUND_LABEL = ['Normal' 'SolarFlare']
-THRESHOLD = 0.7
-
-'''
-# session states
-if "biopsy" not in st.session_state:
-    st.session_state.biopsy = None'''
+CLASS_LABEL = ['Normal' 'SolarFlare']
 
 
 @st.cache_resource
-def get_xgboost_model():
+def get_ConvNeXtXLarge_model():
 
     # Download the model, valid alpha values [0.25,0.35,0.5,0.75,1]
-    base_model = xgb.XGBClassifier(n_estimators=90, max_depth=5)
+    base_model = tf.keras.applications.ConvNeXtXLarge(input_shape=(224, 224, 3), include_top=False, weights='imagenet')
     # Add average pooling to the base
     x = base_model.output
     x = GlobalAveragePooling2D()(x)
@@ -58,23 +50,23 @@ def featurization(image_path, model):
 
 
 # get the featurization model
-resnet_featurized_model = get_resnet_model()
+ConvNeXtXLarge_featurized_model = get_ConvNeXtXLarge_model()
 # load ultrasound image
-ultrasound_model = load_sklearn_models("ultrasound_semi_diffused_MLP")
+classification_model = load_sklearn_models("XGBoost_final_model")
 
 
 # web app
 
 # title
-st.title("Breast Cancer Classification")
+st.title("Solar Flare Classification")
 # image
-st.image(IMG_ADDRESS, caption = "Breast Cancer Classification - Ultrasound Images")
+st.image(IMG_ADDRESS, caption = "Solar Flare Classification - UV Images")
 
 # input image
-st.subheader("Please Upload an Ultrasound Image")
+st.subheader("Please Upload an UV Image")
 
 # file uploader
-image = st.file_uploader("Please Upload an Ultrasound Image", type = ["jpg", "png", "jpeg"], accept_multiple_files = False, help = "Uploade an Image")
+image = st.file_uploader("Please Upload an UV Image", type = ["jpg", "png", "jpeg"], accept_multiple_files = False, help = "Upload an Image")
 
 if image:
     user_image = Image.open(image)
@@ -85,18 +77,10 @@ if image:
 
     #get the features
     with st.spinner("Processing......."):
-        image_features = featurization(IMAGE_NAME, resnet_featurized_model)
-        model_predict = ultrasound_model.predict(image_features)
-        model_predict_proba = ultrasound_model.predict_proba(image_features)
-        probability = model_predict_proba[0][model_predict[0]]
-    col1, col2 = st.columns(2)
+        image_features = featurization(IMAGE_NAME, ConvNeXtXLarge_featurized_model)
+        model_predict = classification_model.predict(image_features)
+        result_label = ULTRASOUND_LABEL[model_predict]
+        st.success(f"Prediction: {result_label}")
+        
 
-    with col1:
-        st.header("Cancer Type")
-        st.subheader("{}".format(ULTRASOUND_LABEL[model_predict[0]]))
-    with col2:
-        st.header("Prediction Probability")
-        st.subheader("{}".format(probability))
-    if probability < THRESHOLD:
-        st.error("Please visit the Biopsy Page for more testing", icon="🚨")
-        st.session_state.biopsy = True
+    
